@@ -1,12 +1,19 @@
-# Telemetry-to-Web Trend Viewer
+# Telemetry Dashboard — Trend Graph ◀︎▶︎ Serial Monitor ＋ Command Console
 
-Real-time **ASCII-CSV telemetry → WebSocket → Chart.js**  
-A tiny FastAPI server plus a static front-end that turns the data stream from your
-micro-controller into a live trend graph in any browser.
+A zero-install browser UI, backed by **FastAPI + PySerial**, that lets you
+
+* stream ASCII-CSV telemetry from your micro-controller  
+* visualise it live with Chart.js **(graph fixed to the left half of the screen)**  
+* type commands from the browser and forward them to the MCU  
+* watch a colour-coded serial console  
+* see **PORT / BAUD** at a glance
 
 ```
 
-MCU  ->  counter,temperature,voltage\n  ->  server.py  ->  WebSocket  ->  Chart.js
+```
+MCU  --(telemetry)-->  server.py  --(WebSocket)-->  browser  [graph ⬅︎ │ ➡︎ console]
+MCU  <--(command)---┘                             └---(command)--- browser
+```
 
 ```
 
@@ -14,13 +21,15 @@ MCU  ->  counter,temperature,voltage\n  ->  server.py  ->  WebSocket  ->  Chart.
 
 ## Features
 
-| ✔ | Feature |
-|---|---------|
-| **Zero-config front-end** &nbsp;| open <http://localhost:8000> and watch the graph grow |
-| **Hot-plug schema** | edit `COLUMNS = [...]` in `server.py`; restart; new fields appear automatically |
-| **8-bit overflow handling** | `counter` (uint8) is auto-expanded to `counter_ext` (monotonic) |
-| **Plain ASCII input** | no binary structs; just `17,25.5,3.30\n` |
-| **Slim dependency set** | only `fastapi`, `uvicorn[standard]`, `pyserial` |
+| ✔ | Capability |
+|---|------------|
+| Live trend graph (Chart.js, auto-adds new series) |
+| Info bar showing **COM port & baud rate** |
+| Scrollable serial monitor (green RX, yellow TX) |
+| Command panel with _Send_ box |
+| 8-bit counter automatically “unwrapped” to long counter |
+| Dummy mode (`--dummy`) for development w/o hardware |
+| One-touch schema editing (`COLUMNS = […]` in `server.py`) |
 
 ---
 
@@ -29,11 +38,11 @@ MCU  ->  counter,temperature,voltage\n  ->  server.py  ->  WebSocket  ->  Chart.
 ```
 
 project/
-├─ server.py            # FastAPI + serial reader + WS broadcaster
-├─ requirements.txt     # Python dependencies
+├─ server.py          # FastAPI + WebSocket bridge
+├─ requirements.txt   # Python deps
 └─ public/
-├─ index.html        # loads Chart.js + adapter
-└─ main.js           # WebSocket → chart
+├─ index.html      # two-column UI (graph | console+cmd)
+└─ main.js         # browser logic
 
 ````
 
@@ -54,70 +63,78 @@ pip install -r requirements.txt
 > WebSocket support works out of the box.
 
 ---
-
 ## Running
 
 ```bash
+# real hardware
 python server.py COM5 115200
-#              │    └─ baud rate   (default 115200)
-#              └───── serial port (default COM5)
-```
+#                  │    └─ baud rate   (default 115200)
+#                  └───── serial port (default COM5)
 
-Then open **[http://localhost:8000](http://localhost:8000)** in your browser.
+# OR dummy data (no serial port needed)
+python server.py --dummy
+````
+
+Open **[http://localhost:8000](http://localhost:8000)** in your browser.
 
 ---
 
-## Telemetry Format (MCU → PC)
+## MCU → PC telemetry format
 
-* **Delimiter**: comma (`,`)
-
-* **Frame terminator**: LF (`\n`)
-
-* **Example**
-
-  ```
-  0,25.4,3.30\n
-  1,25.5,3.29\n
-  2,25.6,3.30\n
-  ```
-
-* Column order must equal `COLUMNS` in `server.py`:
+* **ASCII CSV**, comma-separated, **LF** terminated
+  Example: `17,25.5,3.30\n`
+  
+* Columns *must* match **`COLUMNS`** in `server.py`:
 
   ```python
   COLUMNS = ["counter", "temperature", "voltage"]
   ```
-
-* The first column is assumed to be an **8-bit counter**; the server
-  adds `counter_ext`, which rolls over smoothly past 255.
+* First field is treated as uint8 counter and published as `counter_ext`
+  (0-based, monotonic).
 
 ---
 
-## Customization Tips
+## 5 · Browser UI map
 
-| Goal                          | How                                                           |
-| ----------------------------- | ------------------------------------------------------------- |
-| Add / remove telemetry fields | Update `COLUMNS`, restart server; front-end updates itself    |
-| Change colours / background   | tweak inline CSS or the `hsl()` generator in `public/main.js` |
-| Higher sample rates           | hundreds Hz fine; for >1 kHz down-sample before sending       |
-| Persistent logging            | inside `serial_reader()` write `payload` to a file / DB       |
-| Test without hardware         | `python server.py --dummy` generates synthetic data           |
+```
+┌──────── LEFT 50 % ────────┬────────── RIGHT 50 % ──────────┐
+│                           │  PORT: COM5   BAUD: 115200     │
+│   Trend Graph (canvas)    │  ────────────────────────────  │
+│                           │  Serial Monitor (scroll)       │
+│                           │       > telemetry line         │
+│                           │       < command sent           │
+│                           │  ────────────────────────────  │
+│                           │  [command box]  [Send]         │
+└───────────────────────────┴────────────────────────────────┘
+```
+
+---
+
+## Customization tips
+
+| Need                        | Change                                                      |
+| --------------------------- | ----------------------------------------------------------- |
+| Add/remove telemetry fields | edit `COLUMNS` and restart server                           |
+| Re-position panes           | tweak CSS grid in `public/index.html`                       |
+| Persistent CSV log          | write `payload` to file inside `serial_thread`              |
+| Binary commands             | Base64-encode in JSON or open a second binary serial stream |
+| Security (remote)           | wrap FastAPI with HTTPS / add token auth                    |
 
 ---
 
 ## Troubleshooting
 
-| Symptom                                                     | Suggestion                                                                                                       |
-| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `AttributeError: module 'serial' has no attribute 'Serial'` | `pip uninstall serial && pip install pyserial`                                                                   |
-| Browser shows black page, no graph                          | open DevTools → Console & Network; ensure JSON messages arrive; use latest `server.py` with **startup-loop fix** |
-| `404 /main.js`                                              | make sure the `public/` folder is present and mounted at `/static`                                               |
-| `Unsupported upgrade request`                               | reinstall: `pip install "uvicorn[standard]"`                                                                     |
+| Symptom                                                     | Remedy                                                                                     |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `AttributeError: module 'serial' has no attribute 'Serial'` | `pip uninstall serial && pip install pyserial`                                             |
+| Web page blank, JS console empty                            | ensure `python server.py --dummy` yields frames in **Network → WS → Frames**               |
+| Graph still full-screen                                     | clear cache (`Ctrl+F5`); make sure you’re using the two-column grid layout in `index.html` |
+| `Unsupported upgrade request`                               | reinstall: `pip install "uvicorn[standard]"`                                               |
 
 ---
 
 ## License
 
-MIT — use it, fork it, hack it.
-Attribution is nice but not required. Have fun! 😊
+MIT — use it, bend it, ship it. Attribution is welcome but optional.
 
 ```
