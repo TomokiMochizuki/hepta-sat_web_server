@@ -1,37 +1,49 @@
-const ctx = document.getElementById("chart").getContext("2d");
-let chart = null;
+/* ====== デフォルト色を固定 ====== */
+Chart.defaults.color       = "#e0e0e0";
+Chart.defaults.borderColor = "#444";
 
-const ws = new WebSocket(`ws://${location.host.replace(/^http/, "ws")}/ws`);
-ws.onmessage = e => {
-  const d = JSON.parse(e.data);
-  const t = new Date(d.timestamp);
-
-  if (!chart) {
-    const labels = Object.keys(d).filter(k => k !== "timestamp");
-    const datasets = labels.map((lbl, i) => ({
-      label: lbl,
-      data: [],
-      parsing: false,
-      tension: 0.1,
-    }));
-
-    chart = new Chart(ctx, {
-      type: "line",
-      data: { datasets },
-      options: {
-        animation: false,
-        scales: {
-          x: { type: "time", time: { unit: "second", tooltipFormat: "HH:mm:ss" } },
-          y: { beginAtZero: true, title: { display: true, text: "Value" } },
-        },
-      },
-    });
+/* ====== 準備 ====== */
+const ws = new WebSocket(`ws://${location.host}/ws`);
+const ctx = document.getElementById("chart");
+const datasets = {};
+const chart = new Chart(ctx, {
+  type: "line",
+  data: { datasets: [] },
+  options:{
+    animation:false,
+    parsing:false,
+    spanGaps:false,
+    scales:{
+      x:{type:"time",time:{unit:"second"},grid:{display:true}},
+      y:{grid:{display:true}}
+    },
+    plugins:{legend:{labels:{color:"#e0e0e0"}}}
   }
+});
 
-  chart.data.datasets.forEach(ds => {
-    ds.data.push({ x: t, y: d[ds.label] });
-    if (ds.data.length > 60) ds.data.shift(); // 最大 1 分保持
+/* ====== デバッグ ====== */
+ws.onopen  = ()=>console.log("[WS] open");
+ws.onerror = e =>console.error("[WS] error", e);
+ws.onclose = ()=>console.warn("[WS] closed");
+
+/* ====== 受信 ====== */
+ws.onmessage = e =>{
+  const d = JSON.parse(e.data);        // {counter:17,...,timestamp:ms}
+  const t = d.timestamp;
+
+  Object.entries(d).forEach(([k,v])=>{
+    if(k==="timestamp") return;
+    if(!datasets[k]){                  // 新フィールドが来たら系列追加
+      const idx = Object.keys(datasets).length;
+      const color = `hsl(${idx*60%360} 90% 60%)`;   // 明るい色
+      datasets[k] = {
+        label:k,borderColor:color,pointRadius:0,data:[]
+      };
+      chart.data.datasets.push(datasets[k]);
+    }
+    datasets[k].data.push({x:t,y:+v}); // +v で数値化
+    if(datasets[k].data.length>600) datasets[k].data.shift();
   });
+
   chart.update("none");
 };
-

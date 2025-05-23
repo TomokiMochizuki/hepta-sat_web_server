@@ -1,13 +1,32 @@
 <!doctype html>
 <html lang="ja">
+
 <head>
   <meta charset="utf-8" />
-  <title>Telemetry Viewer</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <title>Telemetry Trend</title>
+
+  <!-- Chart.js と日付アダプタ -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>
+
+  <style>
+    body {
+      margin: 0;
+      background: #111;
+      color: #eee;
+      font-family: sans-serif
+    }
+
+    #chart {
+      width: 100vw;
+      height: 100vh
+    }
+  </style>
 </head>
-<body style="max-width:900px;margin:0 auto;font-family:sans-serif;">
-  <h1>Telemetry Viewer (Python)</h1>
-  <canvas id="chart" width="800" height="400"></canvas>
-  <script src="main.js"></script>
+
+<body>
+  <canvas id="chart"></canvas>
+  <script src="/static/main.js"></script>
 </body>
+
 </html>
