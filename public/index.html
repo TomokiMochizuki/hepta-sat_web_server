@@ -1,13 +1,11 @@
 <!doctype html>
-<html lang="ja">
+<html lang="en">
 
 <head>
   <meta charset="utf-8" />
-  <title>Telemetry Trend</title>
-
+  <title>Telemetry + Command Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>
-
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
   <style>
     body {
       margin: 0;
@@ -20,11 +18,32 @@
       width: 100vw;
       height: 100vh
     }
+
+    #panel {
+      position: fixed;
+      bottom: 8px;
+      left: 8px;
+      display: flex;
+      gap: 4px;
+      background: #222;
+      padding: 6px 8px;
+      border-radius: 4px
+    }
+
+    #cmdBox {
+      min-width: 120px
+    }
   </style>
 </head>
 
 <body>
   <canvas id="chart"></canvas>
+
+  <div id="panel">
+    <input id="cmdBox" placeholder="Type command…">
+    <button id="sendBtn">Send</button>
+  </div>
+
   <script src="/static/main.js"></script>
 </body>
 

@@ -1,49 +1,61 @@
-/* ====== Fix default collor ====== */
+/* === chart defaults === */
 Chart.defaults.color       = "#e0e0e0";
 Chart.defaults.borderColor = "#444";
 
-/* ====== Preparation ====== */
+/* === WebSocket === */
 const ws = new WebSocket(`ws://${location.host}/ws`);
-const ctx = document.getElementById("chart");
-const datasets = {};
-const chart = new Chart(ctx, {
-  type: "line",
-  data: { datasets: [] },
-  options:{
-    animation:false,
-    parsing:false,
-    spanGaps:false,
-    scales:{
-      x:{type:"time",time:{unit:"second"},grid:{display:true}},
-      y:{grid:{display:true}}
-    },
-    plugins:{legend:{labels:{color:"#e0e0e0"}}}
-  }
-});
-
-/* ====== For debugging ====== */
 ws.onopen  = ()=>console.log("[WS] open");
 ws.onerror = e =>console.error("[WS] error", e);
 ws.onclose = ()=>console.warn("[WS] closed");
 
-/* ====== Receiver ====== */
-ws.onmessage = e =>{
-  const d = JSON.parse(e.data);        // {counter:17,...,timestamp:ms}
-  const t = d.timestamp;
+/* === command panel === */
+const box = document.getElementById("cmdBox");
+const btn = document.getElementById("sendBtn");
+function sendCmd(){
+  const txt = box.value.trim();
+  if(!txt) return;
+  ws.send(JSON.stringify({kind:"command", body:txt}));
+  box.value = "";
+}
+btn.onclick   = sendCmd;
+box.onkeyup   = e => (e.key==="Enter") && sendCmd();
 
-  Object.entries(d).forEach(([k,v])=>{
-    if(k==="timestamp") return;
-    if(!datasets[k]){                  // 新フィールドが来たら系列追加
-      const idx = Object.keys(datasets).length;
-      const color = `hsl(${idx*60%360} 90% 60%)`;   // 明るい色
-      datasets[k] = {
-        label:k,borderColor:color,pointRadius:0,data:[]
-      };
-      chart.data.datasets.push(datasets[k]);
-    }
-    datasets[k].data.push({x:t,y:+v}); // +v で数値化
-    if(datasets[k].data.length>600) datasets[k].data.shift();
-  });
+/* === chart === */
+const ctx = document.getElementById("chart");
+const datasets = {};
+const chart = new Chart(ctx, {
+  type:"line",
+  data:{datasets:[]},
+  options:{
+    animation:false, parsing:false,
+    scales:{x:{type:"time",time:{unit:"second"}}},
+    plugins:{legend:{labels:{color:"#e0e0e0"}}}
+  }
+});
 
-  chart.update("none");
+/* === incoming messages === */
+ws.onmessage = e=>{
+  const msg = JSON.parse(e.data);
+
+  if(msg.kind === "telemetry"){
+    const {timestamp:ts, ...fields} = msg;
+    Object.entries(fields).forEach(([k,v])=>{
+      if(k==="kind") return;
+      if(!datasets[k]){
+        const idx = Object.keys(datasets).length;
+        datasets[k]={
+          label:k, borderColor:`hsl(${idx*60%360} 90% 60%)`,
+          pointRadius:0, data:[]
+        };
+        chart.data.datasets.push(datasets[k]);
+      }
+      datasets[k].data.push({x:ts, y:+v});
+      if(datasets[k].data.length>600) datasets[k].data.shift();
+    });
+    chart.update("none");
+  }
+
+  else if(msg.kind === "ack"){
+    console.log("[ACK]", msg.body);
+  }
 };
