@@ -127,7 +127,7 @@ def serial_thread(loop: asyncio.AbstractEventLoop):
         # ⇢ command TX ---------------------------------------------------------
         try:
             cmd = cmd_queue.get_nowait()
-            ser.write((cmd + "\n").encode("ascii"))
+            ser.write((cmd).encode("ascii"))
             print("[SER←CMD]", cmd)
             asyncio.run_coroutine_threadsafe(
                 broadcast(json.dumps({"kind":"serial","dir":"out","body":cmd})), loop)
