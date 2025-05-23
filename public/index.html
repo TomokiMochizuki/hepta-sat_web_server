@@ -3,45 +3,98 @@
 
 <head>
   <meta charset="utf-8" />
-  <title>Telemetry + Command Dashboard</title>
+  <title>Telemetry Dashboard</title>
+
+  <!-- Chart.js + date adapter -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
+
   <style>
+    /* ── global reset ────────────────────────────────────────────── */
+    html,
     body {
+      height: 100%;
       margin: 0;
       background: #111;
-      color: #eee;
+      color: #e0e0e0;
       font-family: sans-serif
     }
 
-    #chart {
-      width: 100vw;
-      height: 100vh
+    /* ── 2-column grid: 50 % | 50 % ─────────────────────────────── */
+    #root {
+      display: grid;
+      grid-template-columns: 70vw 30vw;
+      /* left & right halves */
+      grid-template-rows: 100vh;
+      /* full height */
+      height: 100%;
     }
 
+    /* column 1: chart (fills its grid cell) */
+    #chart {
+      width: 100% !important;
+      /* override Chart.js inline */
+      height: 100% !important;
+      display: block;
+    }
+
+    /* column 2: stack serial monitor over command panel */
+    #rightPane {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      width: 100%;
+    }
+
+    /* ── serial monitor ──────────────────────────────────────────── */
+    #serialMonitor {
+      flex: 1 1 auto;
+      /* take remaining space */
+      background: #000;
+      color: #0f0;
+      font: 12px/1.4 monospace;
+      border: 1px solid #333;
+      opacity: .85;
+      padding: 4px;
+      overflow-y: auto;
+      white-space: pre-wrap
+    }
+
+    #serialMonitor .out {
+      color: #ff6
+    }
+
+    /* ── command panel ──────────────────────────────────────────── */
     #panel {
-      position: fixed;
-      bottom: 8px;
-      left: 8px;
+      flex: 0 0 auto;
+      /* fixed height at bottom */
       display: flex;
       gap: 4px;
       background: #222;
       padding: 6px 8px;
-      border-radius: 4px
+      border-top: 1px solid #333;
     }
 
     #cmdBox {
-      min-width: 120px
+      min-width: 140px
     }
   </style>
 </head>
 
 <body>
-  <canvas id="chart"></canvas>
 
-  <div id="panel">
-    <input id="cmdBox" placeholder="Type command…">
-    <button id="sendBtn">Send</button>
+  <div id="root">
+    <!-- left half: chart -->
+    <canvas id="chart"></canvas>
+
+    <!-- right half: serial + command stacked -->
+    <div id="rightPane">
+      <div id="serialMonitor"></div>
+      <div id="panel">
+        <input id="cmdBox" placeholder="Type command…">
+        <button id="sendBtn">Send</button>
+      </div>
+    </div>
   </div>
 
   <script src="/static/main.js"></script>

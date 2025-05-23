@@ -1,4 +1,4 @@
-/* === chart defaults === */
+/* === Chart.js defaults === */
 Chart.defaults.color       = "#e0e0e0";
 Chart.defaults.borderColor = "#444";
 
@@ -15,10 +15,21 @@ function sendCmd(){
   const txt = box.value.trim();
   if(!txt) return;
   ws.send(JSON.stringify({kind:"command", body:txt}));
+  logSerial("out", txt);
   box.value = "";
 }
 btn.onclick   = sendCmd;
 box.onkeyup   = e => (e.key==="Enter") && sendCmd();
+
+/* === serial monitor === */
+const mon = document.getElementById("serialMonitor");
+function logSerial(dir,text){
+  const div = document.createElement("div");
+  div.className = dir;                      // 'in' or 'out'
+  div.textContent = (dir==="in"?"> ":"< ") + text;
+  mon.appendChild(div);
+  mon.scrollTop = mon.scrollHeight;
+}
 
 /* === chart === */
 const ctx = document.getElementById("chart");
@@ -43,7 +54,7 @@ ws.onmessage = e=>{
       if(k==="kind") return;
       if(!datasets[k]){
         const idx = Object.keys(datasets).length;
-        datasets[k]={
+        datasets[k] = {
           label:k, borderColor:`hsl(${idx*60%360} 90% 60%)`,
           pointRadius:0, data:[]
         };
@@ -53,6 +64,10 @@ ws.onmessage = e=>{
       if(datasets[k].data.length>600) datasets[k].data.shift();
     });
     chart.update("none");
+  }
+
+  else if(msg.kind === "serial"){
+    logSerial(msg.dir, msg.body);
   }
 
   else if(msg.kind === "ack"){
