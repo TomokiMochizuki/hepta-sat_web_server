@@ -1,6 +1,6 @@
 """
-ASCII CSV テレメトリ → WebSocket → Chart.js
-使い方:  python server.py COM5 115200
+ASCII CSV Telemetry → WebSocket → Chart.js
+Sample Usage:  python server.py COM5 9600
 """
 
 import asyncio, json, sys, threading, time
@@ -12,7 +12,8 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 import serial                    # PySerial
 
-# ==== テレメトリ列定義 ====
+# ==== Definition of the telemetry ====
+# Users only need to change this part.
 COLUMNS: List[str] = ["counter", "temperature", "voltage"]
 
 # ==== 起動引数 ====
@@ -30,7 +31,7 @@ async def ws_endpoint(ws: WebSocket):
     clients.add(ws)
     try:
         while True:
-            await asyncio.sleep(3600)          # push は broadcast() 側
+            await asyncio.sleep(3600)   # Keep the connection alive
     except WebSocketDisconnect:
         clients.discard(ws)
 
@@ -45,7 +46,7 @@ async def broadcast(msg: str):
     for ws in list(clients):
         try:
             await ws.send_text(msg)
-            # print("[TX]", msg[:60])          # ←デバッグ用
+            # print("[TX]", msg[:60])          # For debug
         except Exception:
             clients.discard(ws)
 
@@ -86,14 +87,14 @@ def serial_reader(loop: asyncio.AbstractEventLoop):
             "counter_ext": counter_ext,
             "timestamp": int(time.time()*1000),
         }
-        # print("payload:", payload)           # ←デバッグ用
+        # print("payload:", payload)           # For debug
         asyncio.run_coroutine_threadsafe(
             broadcast(json.dumps(payload)), loop)
 
-#--- FastAPI 起動時に“正しい”ループを渡す -------------------------------------
+#--- FastAPI: Pass the “correct” loop at startup -------------------------------------
 @app.on_event("startup")
 async def startup_event():
-    loop = asyncio.get_running_loop()          # ← uvicorn の本ループ
+    loop = asyncio.get_running_loop()          # Main loop for uvicorn
     threading.Thread(target=serial_reader, args=(loop,),
                      daemon=True).start()
 # ------------------------------------------------------------------------------

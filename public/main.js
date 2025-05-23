@@ -1,8 +1,8 @@
-/* ====== デフォルト色を固定 ====== */
+/* ====== Fix default collor ====== */
 Chart.defaults.color       = "#e0e0e0";
 Chart.defaults.borderColor = "#444";
 
-/* ====== 準備 ====== */
+/* ====== Preparation ====== */
 const ws = new WebSocket(`ws://${location.host}/ws`);
 const ctx = document.getElementById("chart");
 const datasets = {};
@@ -21,12 +21,12 @@ const chart = new Chart(ctx, {
   }
 });
 
-/* ====== デバッグ ====== */
+/* ====== For debugging ====== */
 ws.onopen  = ()=>console.log("[WS] open");
 ws.onerror = e =>console.error("[WS] error", e);
 ws.onclose = ()=>console.warn("[WS] closed");
 
-/* ====== 受信 ====== */
+/* ====== Receiver ====== */
 ws.onmessage = e =>{
   const d = JSON.parse(e.data);        // {counter:17,...,timestamp:ms}
   const t = d.timestamp;
