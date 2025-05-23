@@ -41,6 +41,12 @@ cmd_queue: asyncio.Queue[str] = asyncio.Queue()
 @app.websocket("/ws")
 async def ws_endpoint(ws: WebSocket):
     await ws.accept()
+    # ── tell the browser which port/baud we use ─────────────────────
+    await ws.send_text(json.dumps({
+        "kind": "config",
+        "port": SERIAL_PORT,
+        "baud": BAUD
+    }))
     clients.add(ws)
     try:
         while True:

@@ -48,6 +48,12 @@ const chart = new Chart(ctx, {
 ws.onmessage = e=>{
   const msg = JSON.parse(e.data);
 
+  if(msg.kind === "config"){
+    document.getElementById("infoBar").textContent =
+      `PORT: ${msg.port}   BAUD: ${msg.baud}`;
+    return;
+  }
+
   if(msg.kind === "telemetry"){
     const {timestamp:ts, ...fields} = msg;
     Object.entries(fields).forEach(([k,v])=>{

@@ -75,6 +75,15 @@
       border-top: 1px solid #333;
     }
 
+    /* info bar (port / baud) */
+    #infoBar {
+      font: 13px monospace;
+      background: #333;
+      color: #fff;
+      padding: 2px 6px;
+      border-bottom: 1px solid #444
+    }
+
     #cmdBox {
       min-width: 140px
     }
@@ -89,6 +98,7 @@
 
     <!-- right half: serial + command stacked -->
     <div id="rightPane">
+      <div id="infoBar"></div>
       <div id="serialMonitor"></div>
       <div id="panel">
         <input id="cmdBox" placeholder="Type command…">
